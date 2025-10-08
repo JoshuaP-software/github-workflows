@@ -1,0 +1,33 @@
+name: Notify Discord on PR events
+
+on:
+  workflow_call:
+    secrets:
+      DISCORD_WEBHOOK:
+        required: true
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send PR opened message
+        if: ${{ github.event.action == 'opened' }}
+        uses: Ilshidur/action-discord@v3
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          args: |
+            🆕 **Pull Request Opened**
+            • **Title:** ${{ github.event.pull_request.title }}
+            • **Author:** ${{ github.actor }}
+            • **Link:** ${{ github.event.pull_request.html_url }}
+
+      - name: Send PR merged message
+        if: ${{ github.event.pull_request.merged == true }}
+        uses: Ilshidur/action-discord@v3
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          args: |
+            ✅ **Pull Request Merged**
+            • **Title:** ${{ github.event.pull_request.title }}
+            • **Merged by:** ${{ github.actor }}
+            • **Link:** ${{ github.event.pull_request.html_url }}
