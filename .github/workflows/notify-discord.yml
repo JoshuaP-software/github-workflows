@@ -13,8 +13,9 @@ jobs:
       - name: Send PR opened message
         if: ${{ github.event.action == 'opened' }}
         uses: Ilshidur/action-discord@0.4.0
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK }}
           args: |
             🆕 **Pull Request Opened**
             • **Title:** ${{ github.event.pull_request.title }}
@@ -24,8 +25,9 @@ jobs:
       - name: Send PR merged message
         if: ${{ github.event.pull_request.merged == true }}
         uses: Ilshidur/action-discord@0.4.0
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK }}
           args: |
             ✅ **Pull Request Merged**
             • **Title:** ${{ github.event.pull_request.title }}
