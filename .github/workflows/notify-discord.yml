@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Send PR opened message
         if: ${{ github.event.action == 'opened' }}
-        uses: Ilshidur/action-discord@v3
+        uses: Ilshidur/action-discord@0.4.0
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK }}
           args: |
@@ -23,7 +23,7 @@ jobs:
 
       - name: Send PR merged message
         if: ${{ github.event.pull_request.merged == true }}
-        uses: Ilshidur/action-discord@v3
+        uses: Ilshidur/action-discord@0.4.0
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK }}
           args: |
