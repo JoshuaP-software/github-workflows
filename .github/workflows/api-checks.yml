@@ -1,0 +1,106 @@
+name: API Checks - Test, Coverage, Lint
+
+on:
+  workflow_call:
+
+jobs:
+  build-test-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # prevent hanging jobs
+
+    services:
+      postgres:
+        image: postgis/postgis:15-3.3
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: db_user
+          POSTGRES_DB: loyalist
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd="pg_isready -U db_user -h 127.0.0.1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      PYTHONPATH: src
+      POSTGRESQL_DATABASE_URL: postgresql+psycopg2://db_user@127.0.0.1:5432/loyalist
+      JWT_SECRET_KEY: test_jwt_secret_key
+      AWS_ACCESS_KEY_ID: TEST_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY: TEST_SECRET_ACCESS_KEY
+      VERIFICATION_SENDER_EMAIL: test_verification_send@loyalist.app
+      API_BASE_URL: http://localhost:8000
+      AWS_REGION: eu-west-2
+
+    steps:
+      # ----------------------------
+      # ⚙️ Setup
+      # ----------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      # ----------------------------
+      # 🧠 Wait for Postgres
+      # ----------------------------
+      - name: Wait for Postgres
+        run: |
+          echo "⏳ Waiting for Postgres to be ready..."
+          for i in {1..20}; do
+            if pg_isready -h 127.0.0.1 -U db_user; then
+              echo "✅ Postgres is ready!"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "❌ Postgres failed to start. Dumping logs:"
+          docker ps -a
+          docker logs $(docker ps -q --filter "ancestor=postgis/postgis:15-3.3")
+          exit 1
+
+      # ----------------------------
+      # 🧪 Tests
+      # ----------------------------
+      - name: Run Tests
+        run: uv run pytest -v --maxfail=1 --disable-warnings
+
+      # ----------------------------
+      # 📊 Coverage
+      # ----------------------------
+      - name: Run Coverage (must be 100%)
+        run: |
+          uv run coverage run -m pytest
+          uv run coverage report --fail-under=100
+          uv run coverage html
+
+      - name: Upload Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: htmlcov
+          retention-days: 14
+
+      # ----------------------------
+      # 🧹 Lint
+      # ----------------------------
+      - name: Run Ruff
+        run: |
+          uv run ruff check --diff
+          uv run ruff format --check

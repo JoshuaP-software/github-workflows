@@ -1,6 +1,8 @@
 name: Notify Discord on PR events
 
 on:
+  pull_request:
+    types: [opened, closed]
   workflow_call:
     secrets:
       DISCORD_WEBHOOK:
